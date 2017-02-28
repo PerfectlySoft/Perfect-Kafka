@@ -204,10 +204,71 @@ public class Kafka {
     case END_ALL = 44
   }//end
 
-  public class Conf {
+  public class TopicConfig {
     internal var conf: OpaquePointer
 
-    init (_ configuration: Conf? = nil) throws {
+    init (_ configuration: TopicConfig? = nil) throws {
+      if let config = configuration {
+        guard let cnf = rd_kafka_topic_conf_dup(config.conf) else {
+          throw Exception.UNKNOWN
+        }//end guard
+        conf = cnf
+      }else {
+        guard let cnf = rd_kafka_topic_conf_new() else {
+          throw Exception.UNKNOWN
+        }
+        conf = cnf
+      }//end if
+    }//end init
+
+    deinit {
+      rd_kafka_topic_conf_destroy(conf)
+    }//end deconstruction
+
+    public var properties: [String: String] {
+      get {
+        var dic: [String:String] = [:]
+        var cnt = 0
+        guard let array = rd_kafka_topic_conf_dump(conf, &cnt) else {
+          return dic
+        }//end guard
+        if cnt < 1 {
+          return dic
+        }//end if
+        for i in 0 ... cnt / 2 {
+          guard let k = array.advanced(by: i * 2).pointee,
+            let v = array.advanced(by: i * 2 + 1).pointee
+            else {
+              break
+          }//end guard
+          let key = String(cString: k)
+          let value = String(cString: v)
+          dic[key] = value
+        }//next
+        rd_kafka_conf_dump_free(array, cnt)
+        return dic
+      }//end get
+    }//end properties
+
+    public func `get` (_ variable: String) throws -> String {
+        guard let value = properties[variable] else {
+          throw Exception.UNKNOWN
+        }//end guard
+        return value
+    }//end get
+
+    public func `set` (_ variable: String, value: String) throws {
+      let r = rd_kafka_topic_conf_set(conf, variable, value, nil, 0)
+      guard r.rawValue == Exception.NO_ERROR.rawValue else {
+        throw Exception(rawValue: r.rawValue)!
+      }//end guard
+    }//end set
+  }
+
+  public class Config {
+    internal var conf: OpaquePointer
+
+    init (_ configuration: Config? = nil) throws {
       if let config = configuration {
         guard let cnf = rd_kafka_conf_dup(config.conf) else {
           throw Exception.UNKNOWN
@@ -282,5 +343,5 @@ public class Kafka {
         throw Exception(rawValue: r.rawValue)!
       }//end guard
     }//end set
-  }
+  }//end Config
 }

@@ -27,14 +27,14 @@ import XCTest
 @testable import PerfectKafka
 
 class PerfectKafkaTests: XCTestCase {
-    func testExample() {
+    func testConfig() {
         do {
-          let k = try Kafka.Conf()
+          let k = try Kafka.Config()
           let dic = k.properties
           print(dic)
           XCTAssertGreaterThan(dic.count, 0)
 
-          let conf = try Kafka.Conf(k)
+          let conf = try Kafka.Config(k)
           let d2 = conf.properties
           print(d2)
 
@@ -47,14 +47,33 @@ class PerfectKafkaTests: XCTestCase {
           print(fwait)
           XCTAssertEqual(testValue, fwait)
         }catch(let err) {
-          XCTFail("\(err)")
+          XCTFail("Config \(err)")
         }
     }
 
-
+  func testTopicConfig() {
+    do {
+      let config = try Kafka.TopicConfig()
+      let conf = try Kafka.TopicConfig(config)
+      let dic = conf.properties
+      print(dic)
+      XCTAssertGreaterThan(dic.count, 0)
+      let testKey = "request.timeout.ms"
+      var fwait = try conf.get(testKey)
+      print(fwait)
+      let testValue = "4000"
+      try conf.set(testKey, value: testValue)
+      fwait =  try conf.get(testKey)
+      print(fwait)
+      XCTAssertEqual(testValue, fwait)
+    }catch(let err) {
+      XCTFail("Topic Config \(err)")
+    }
+  }
     static var allTests : [(String, (PerfectKafkaTests) -> () throws -> Void)] {
         return [
-            ("testExample", testExample),
+            ("testConfig", testConfig),
+            ("testTopicConfig", testTopicConfig)
         ]
     }
 }
