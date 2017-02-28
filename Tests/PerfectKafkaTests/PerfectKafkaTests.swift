@@ -70,10 +70,30 @@ class PerfectKafkaTests: XCTestCase {
       XCTFail("Topic Config \(err)")
     }
   }
+
+  func testProducer () {
+    do {
+      let k = try Kafka(type: .PRODUCER)
+      print(k.name)
+    }catch(let err) {
+      XCTFail("Producer \(err)")
+    }
+  }
+
+  func testConsumer () {
+    do {
+      let k = try Kafka(type: .CONSUMER)
+      print(k.name)
+    }catch(let err) {
+      XCTFail("Consumer \(err)")
+    }
+  }
     static var allTests : [(String, (PerfectKafkaTests) -> () throws -> Void)] {
         return [
             ("testConfig", testConfig),
-            ("testTopicConfig", testTopicConfig)
+            ("testTopicConfig", testTopicConfig),
+            ("testProducer", testProducer),
+            ("testConsumer", testConsumer)
         ]
     }
 }

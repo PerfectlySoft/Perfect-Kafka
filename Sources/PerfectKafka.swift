@@ -28,6 +28,17 @@ public class Kafka {
 
   public static let szString = 1024
 
+  public enum `Type` {
+    case PRODUCER, CONSUMER
+  }//end enum
+
+  public enum Failure: Error {
+    case INIT(String)
+  }//end Failure
+
+  internal var _handle: OpaquePointer
+  internal var _config: Config
+
   public enum Exception: Int32, Error {
     /* Internal errors to rdkafka: */
     ///  Begin internal error codes
@@ -222,7 +233,7 @@ public class Kafka {
     }//end init
 
     deinit {
-      rd_kafka_topic_conf_destroy(conf)
+      //rd_kafka_topic_conf_destroy(conf)
     }//end deconstruction
 
     public var properties: [String: String] {
@@ -283,7 +294,7 @@ public class Kafka {
     }//end init
 
     deinit {
-      rd_kafka_conf_destroy(conf)
+      //rd_kafka_conf_destroy(conf)
     }//end deconstruction
 
     public var properties: [String: String] {
@@ -344,4 +355,35 @@ public class Kafka {
       }//end guard
     }//end set
   }//end Config
+
+
+  init(type: `Type`, config: Config? = nil) throws {
+    let kType = type == .PRODUCER ? RD_KAFKA_PRODUCER : RD_KAFKA_CONSUMER
+    if config == nil {
+      _config = try Config()
+    }else {
+      _config = config!
+    }//end if
+    let errstr = UnsafeMutablePointer<CChar>.allocate(capacity: Kafka.szString)
+    guard let h = rd_kafka_new(kType, _config.conf, errstr, Kafka.szString) else {
+      let e = String(cString: errstr)
+      errstr.deallocate(capacity: Kafka.szString)
+      throw Failure.INIT(e)
+    }//end guard
+    errstr.deallocate(capacity: Kafka.szString)
+    _handle = h
+  }//end init
+
+  deinit {
+    rd_kafka_destroy(_handle)
+  }//end destruction
+
+  public var name: String {
+    get {
+      guard let n = rd_kafka_name(_handle) else {
+        return ""
+      }//end guard
+      return String(cString: n)
+    }//end get
+  }//end name
 }
