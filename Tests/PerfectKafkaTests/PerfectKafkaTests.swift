@@ -27,6 +27,8 @@ import XCTest
 @testable import PerfectKafka
 
 class PerfectKafkaTests: XCTestCase {
+
+  let hosts = "localhost:9092"
     func testConfig() {
         do {
           let k = try Kafka.Config()
@@ -73,8 +75,12 @@ class PerfectKafkaTests: XCTestCase {
 
   func testProducer () {
     do {
-      let k = try Kafka(type: .PRODUCER)
-      print(k.name)
+      let producer = try KafkaProducer("testing")
+      let brokers = producer.connect(brokers: hosts)
+      XCTAssertGreaterThanOrEqual(brokers, 1)
+      let now = time(nil)
+      try producer.send(message: "message test \(now)")
+      producer.flush(3)
     }catch(let err) {
       XCTFail("Producer \(err)")
     }

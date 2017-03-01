@@ -269,9 +269,9 @@ public class Kafka {
     }//end get
 
     public func `set` (_ variable: String, value: String) throws {
-      let r = rd_kafka_topic_conf_set(conf, variable, value, nil, 0)
-      guard r.rawValue == Exception.NO_ERROR.rawValue else {
-        throw Exception(rawValue: r.rawValue)!
+      let reason = rd_kafka_topic_conf_set(conf, variable, value, nil, 0)
+      guard reason.rawValue == Exception.NO_ERROR.rawValue else {
+        throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
       }//end guard
     }//end set
   }
@@ -337,10 +337,10 @@ public class Kafka {
     #else
       var size = Kafka.szString
       let value = UnsafeMutablePointer<CChar>.allocate(capacity: size)
-      let r = rd_kafka_conf_get(conf, variable, value, &size)
-      guard r.rawValue == Exception.NO_ERROR.rawValue else {
+      let reason = rd_kafka_conf_get(conf, variable, value, &size)
+      guard reason.rawValue == Exception.NO_ERROR.rawValue else {
         value.deallocate(capacity: Kafka.szString)
-        throw Exception(rawValue: r.rawValue)!
+        throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
       }//end guard
       let valueString = String(cString: value)
       value.deallocate(capacity: Kafka.szString)
@@ -349,9 +349,9 @@ public class Kafka {
     }//end get
 
     public func `set` (_ variable: String, value: String) throws {
-      let r = rd_kafka_conf_set(conf, variable, value, nil, 0)
-      guard r.rawValue == Exception.NO_ERROR.rawValue else {
-        throw Exception(rawValue: r.rawValue)!
+      let reason = rd_kafka_conf_set(conf, variable, value, nil, 0)
+      guard reason.rawValue == Exception.NO_ERROR.rawValue else {
+        throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
       }//end guard
     }//end set
   }//end Config
@@ -372,6 +372,7 @@ public class Kafka {
     }//end guard
     errstr.deallocate(capacity: Kafka.szString)
     _handle = h
+
   }//end init
 
   deinit {
@@ -386,4 +387,18 @@ public class Kafka {
       return String(cString: n)
     }//end get
   }//end name
-}
+
+  public func connect(brokers: String) -> Int {
+    return Int(rd_kafka_brokers_add(_handle, brokers))
+  }//end add
+
+  public func connect(brokers: [String]) -> Int {
+    return connect(brokers: brokers.joined(separator: ","))
+  }//end func add
+
+  public func connect(brokers: [String: Int]) -> Int {
+    return connect(brokers: brokers.reduce("") { $0.isEmpty ? "\($1.key):\($1.value)" : "\($0),\($1.key):\($1.value)" })
+  }//end func add
+}//end class
+
+
