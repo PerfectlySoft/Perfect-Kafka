@@ -28,7 +28,7 @@ import XCTest
 
 class PerfectKafkaTests: XCTestCase {
 
-  let hosts = "localhost:9092"
+  let hosts = "nut.krb5.ca:9092"
     func testConfig() {
         do {
           let k = try Kafka.Config()
