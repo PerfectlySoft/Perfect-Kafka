@@ -39,6 +39,11 @@ public class Kafka {
   internal var _handle: OpaquePointer
   internal var _config: Config
 
+  public static var instances:[OpaquePointer: Kafka] = [:]
+  public typealias ErrorCallback = (String) -> Void
+  public var OnError:ErrorCallback = { _ in }
+
+
   public enum Exception: Int32, Error {
     /* Internal errors to rdkafka: */
     ///  Begin internal error codes

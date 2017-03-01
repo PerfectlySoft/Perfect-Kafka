@@ -36,8 +36,6 @@ public class KafkaProducer: Kafka {
 
   internal var queue = Set<UnsafeMutablePointer<Int>>()
 
-  public static var producers:[OpaquePointer: KafkaProducer] = [:]
-
   public func pop(_ msgId: UnsafeMutableRawPointer?) {
     guard let ticket = msgId else { return }
     let t = unsafeBitCast(ticket, to: UnsafeMutablePointer<Int>.self)
@@ -50,10 +48,20 @@ public class KafkaProducer: Kafka {
     let gConf = try ( globalConfig ?? (try Config()))
 
     rd_kafka_conf_set_dr_cb(gConf.conf, { rk, _, _, _, _, ticket in
-      guard let producer = KafkaProducer.producers[rk!] else { return }
+      guard let pk = rk else { return }
+      guard let k = Kafka.instances[pk] else { return }
+      guard let producer = k as? KafkaProducer else { return }
       producer.pop(ticket)
       print("                          found something to pop")
     })
+
+    rd_kafka_conf_set_error_cb(gConf.conf, { conf, _, reason, _ in
+      guard let pConf = conf else { return }
+      guard let cnf = Kafka.instances[pConf] else { return }
+      guard let r = reason else { return }
+      cnf.OnError(String(cString: r))
+    })
+
     try super.init(type: .PRODUCER, config: gConf)
     if let tConf = topicConfig {
       guard let h = rd_kafka_topic_new(_handle, topic, tConf.conf) else {
@@ -76,7 +84,7 @@ public class KafkaProducer: Kafka {
       }//end guard
       topicHandle = h
     }//end guard
-    KafkaProducer.producers[_handle] = self
+    KafkaProducer.instances[_handle] = self
   }//end init
 
   public func flush(_ timeout: Int) {
@@ -92,6 +100,7 @@ public class KafkaProducer: Kafka {
   deinit {
     guard let h = topicHandle else { return }
     // there may be some messages in queue waiting to send, so wait for at least one second
+    flush(1)
     rd_kafka_topic_destroy(h)
     queue.forEach { $0.deallocate(capacity: 1) }
   }//end

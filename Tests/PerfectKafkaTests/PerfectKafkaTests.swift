@@ -76,11 +76,12 @@ class PerfectKafkaTests: XCTestCase {
   func testProducer () {
     do {
       let producer = try KafkaProducer("testing")
+      producer.OnError = { XCTFail("producer error: \($0)") }
       let brokers = producer.connect(brokers: hosts)
       XCTAssertGreaterThanOrEqual(brokers, 1)
       let now = time(nil)
       try producer.send(message: "message test \(now)")
-      producer.flush(3)
+      producer.flush(1)
     }catch(let err) {
       XCTFail("Producer \(err)")
     }
