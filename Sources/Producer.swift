@@ -107,6 +107,36 @@ public class Producer: Kafka {
     throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
   }//end send
 
+  public func send(message: [Int8], key: [Int8] = []) throws {
+    guard let h = topicHandle else { throw Exception.UNKNOWN }
+    if message.count < 1 { return }
+
+    var r:Int32 = 0
+
+    sequenceId += 1
+
+    let ticket = UnsafeMutablePointer<Int>.allocate(capacity: 1)
+    ticket.pointee = sequenceId
+
+    let buffer = malloc(message.count)
+    let _ = message.withUnsafeBufferPointer { memcpy(buffer, $0.baseAddress, message.count) }
+
+    if key.count > 0 {
+      let kbuf = UnsafeMutablePointer<Int8>.allocate(capacity: key.count)
+      let _ = message.withUnsafeBufferPointer { memcpy(kbuf, $0.baseAddress, key.count) }
+      r = rd_kafka_produce(h, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, buffer, message.count, kbuf, key.count, ticket)
+    }else{
+      r = rd_kafka_produce(h, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, buffer, message.count, nil, 0, ticket)
+    }//end if
+    if r == 0 {
+      queue.insert(ticket)
+      return
+    }//end if
+    ticket.deallocate(capacity: 1)
+    let reason = rd_kafka_errno2err(errno)
+    throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
+  }//end send
+
   public func send(messages: [(String, String?)]) throws -> Int {
     if messages.isEmpty { return 0 }
     guard let h = topicHandle else { throw Exception.UNKNOWN }
@@ -134,4 +164,35 @@ public class Producer: Kafka {
     batch.deallocate(capacity: messages.count)
     return Int(r)
   }//
+
+  public func send(messages: [([Int8], [Int8])]) throws -> Int {
+    if messages.isEmpty { return 0 }
+    guard let h = topicHandle else { throw Exception.UNKNOWN }
+    let batch = UnsafeMutablePointer<rd_kafka_message_t>.allocate(capacity: messages.count)
+    for i in 0 ... messages.count - 1 {
+      let p = batch.advanced(by: i)
+      let m = messages[i]
+      if m.0.count < 1 { continue}
+
+      p.pointee.partition = RD_KAFKA_PARTITION_UA
+      p.pointee.payload = malloc(m.0.count)
+      let _ = m.0.withUnsafeBufferPointer { memcpy(p.pointee.payload, $0.baseAddress, m.0.count) }
+      p.pointee.len = m.0.count
+      sequenceId += 1
+      let ticket = UnsafeMutablePointer<Int>.allocate(capacity: 1)
+      ticket.pointee = sequenceId
+      queue.insert(ticket)
+      p.pointee._private = unsafeBitCast(ticket, to: UnsafeMutableRawPointer.self)
+      if m.1.count > 0 {
+        p.pointee.key = malloc(m.1.count)
+        let _ = m.1.withUnsafeBufferPointer { memcpy(p.pointee.key, $0.baseAddress, m.1.count) }
+        p.pointee.key_len = m.1.count
+      } else {
+        p.pointee.key = nil
+        p.pointee.key_len = 0
+      }//end key
+    }//next i
+    let r = rd_kafka_produce_batch(h, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, batch, Int32(messages.count))
+    batch.deallocate(capacity: messages.count)
+    return Int(r)  }
 }//end class

@@ -26,6 +26,18 @@ import Darwin
 import XCTest
 @testable import PerfectKafka
 
+extension String {
+  public var buffer: [Int8] {
+    get {
+      return self.withCString { ptr -> [Int8]  in
+        let buffer = UnsafeBufferPointer(start: ptr, count: self.utf8.count)
+        return Array(buffer)
+      }//end with
+    }//end get
+  }//end property
+}//end extension
+
+
 class PerfectKafkaTests: XCTestCase {
 
   let hosts = "nut.krb5.ca:9092"
@@ -79,15 +91,25 @@ class PerfectKafkaTests: XCTestCase {
       producer.OnError = { XCTFail("producer error: \($0)") }
       let brokers = producer.connect(brokers: hosts)
       XCTAssertGreaterThanOrEqual(brokers, 1)
-      let now = time(nil)
+      var now = time(nil)
       try producer.send(message: "message test \(now)")
       var messages = [(String, String?)]()
       for i in 1 ... 10 {
         messages.append(("batch #\(i) -> \(now)", nil))
       }//next
-      let r = try producer.send(messages: messages)
+      var r = try producer.send(messages: messages)
       XCTAssertEqual(r, messages.count)
       producer.flush(1)
+
+      print("       --------     binaries    ----------")
+      now = time(nil)
+      try producer.send(message: "binary data test \(now)".buffer)
+      var data = [([Int8], [Int8])]()
+      for i in 1 ... 10 {
+        data.append(("bianry data batch #\(i) -> \(now)".buffer, [Int8]()))
+      }//next
+      r = try producer.send(messages: data)
+      XCTAssertEqual(r, messages.count)
     }catch(let err) {
       XCTFail("Producer \(err)")
     }
