@@ -19,8 +19,10 @@
 
 #if os(Linux)
 import SwiftGlibc
+let OS = "Linux"
 #else
 import Darwin
+let OS = "OS X"
 #endif
 
 import XCTest
@@ -92,24 +94,25 @@ class PerfectKafkaTests: XCTestCase {
       let brokers = producer.connect(brokers: hosts)
       XCTAssertGreaterThanOrEqual(brokers, 1)
       var now = time(nil)
-      try producer.send(message: "message test \(now)")
+      try producer.send(message: "\(OS) message test \(now)")
       var messages = [(String, String?)]()
       for i in 1 ... 10 {
-        messages.append(("batch #\(i) -> \(now)", nil))
+        messages.append(("\(OS) batch #\(i) -> \(now)", nil))
       }//next
       var r = try producer.send(messages: messages)
       XCTAssertEqual(r, messages.count)
-      producer.flush(1)
 
       print("       --------     binaries    ----------")
       now = time(nil)
-      try producer.send(message: "binary data test \(now)".buffer)
+      try producer.send(message: "\(OS) binary data test \(now)".buffer)
       var data = [([Int8], [Int8])]()
       for i in 1 ... 10 {
-        data.append(("bianry data batch #\(i) -> \(now)".buffer, [Int8]()))
+        data.append(("\(OS) bianry data batch #\(i) -> \(now)".buffer, [Int8]()))
       }//next
       r = try producer.send(messages: data)
       XCTAssertEqual(r, messages.count)
+
+      producer.flush(1)
     }catch(let err) {
       XCTFail("Producer \(err)")
     }

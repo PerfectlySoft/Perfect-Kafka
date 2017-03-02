@@ -119,11 +119,18 @@ public class Producer: Kafka {
     ticket.pointee = sequenceId
 
     let buffer = malloc(message.count)
-    let _ = message.withUnsafeBufferPointer { memcpy(buffer, $0.baseAddress, message.count) }
-
+    #if os(Linux)
+      let _ = message.withUnsafeBufferPointer { memcpy(buffer!, $0.baseAddress!, message.count) }
+    #else
+      let _ = message.withUnsafeBufferPointer { memcpy(buffer, $0.baseAddress, message.count) }
+    #endif
     if key.count > 0 {
       let kbuf = UnsafeMutablePointer<Int8>.allocate(capacity: key.count)
-      let _ = message.withUnsafeBufferPointer { memcpy(kbuf, $0.baseAddress, key.count) }
+      #if os(Linux)
+        let _ = message.withUnsafeBufferPointer { memcpy(kbuf, $0.baseAddress!, key.count) }
+      #else
+        let _ = message.withUnsafeBufferPointer { memcpy(kbuf, $0.baseAddress, key.count) }
+      #endif
       r = rd_kafka_produce(h, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, buffer, message.count, kbuf, key.count, ticket)
     }else{
       r = rd_kafka_produce(h, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, buffer, message.count, nil, 0, ticket)
@@ -176,7 +183,11 @@ public class Producer: Kafka {
 
       p.pointee.partition = RD_KAFKA_PARTITION_UA
       p.pointee.payload = malloc(m.0.count)
-      let _ = m.0.withUnsafeBufferPointer { memcpy(p.pointee.payload, $0.baseAddress, m.0.count) }
+      #if os(Linux)
+        let _ = m.0.withUnsafeBufferPointer { memcpy(p.pointee.payload, $0.baseAddress!, m.0.count) }
+      #else
+        let _ = m.0.withUnsafeBufferPointer { memcpy(p.pointee.payload, $0.baseAddress, m.0.count) }
+      #endif
       p.pointee.len = m.0.count
       sequenceId += 1
       let ticket = UnsafeMutablePointer<Int>.allocate(capacity: 1)
@@ -185,7 +196,11 @@ public class Producer: Kafka {
       p.pointee._private = unsafeBitCast(ticket, to: UnsafeMutableRawPointer.self)
       if m.1.count > 0 {
         p.pointee.key = malloc(m.1.count)
-        let _ = m.1.withUnsafeBufferPointer { memcpy(p.pointee.key, $0.baseAddress, m.1.count) }
+        #if os(Linux)
+          let _ = m.1.withUnsafeBufferPointer { memcpy(p.pointee.key, $0.baseAddress!, m.1.count) }
+        #else
+          let _ = m.1.withUnsafeBufferPointer { memcpy(p.pointee.key, $0.baseAddress, m.1.count) }
+        #endif
         p.pointee.key_len = m.1.count
       } else {
         p.pointee.key = nil
