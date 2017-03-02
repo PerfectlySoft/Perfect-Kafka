@@ -91,26 +91,27 @@ class PerfectKafkaTests: XCTestCase {
     do {
       let producer = try Producer("testing")
       producer.OnError = { XCTFail("producer error: \($0)") }
+      producer.OnSent = { print("message \($0) has been sent") }
       let brokers = producer.connect(brokers: hosts)
       XCTAssertGreaterThanOrEqual(brokers, 1)
       var now = time(nil)
-      try producer.send(message: "\(OS) message test \(now)")
+      let _ = try producer.send(message: "\(OS) message test \(now)")
       var messages = [(String, String?)]()
       for i in 1 ... 10 {
         messages.append(("\(OS) batch #\(i) -> \(now)", nil))
       }//next
       var r = try producer.send(messages: messages)
-      XCTAssertEqual(r, messages.count)
+      XCTAssertEqual(r.count, messages.count)
 
       print("       --------     binaries    ----------")
       now = time(nil)
-      try producer.send(message: "\(OS) binary data test \(now)".buffer)
+      let _ = try producer.send(message: "\(OS) binary data test \(now)".buffer)
       var data = [([Int8], [Int8])]()
       for i in 1 ... 10 {
         data.append(("\(OS) bianry data batch #\(i) -> \(now)".buffer, [Int8]()))
       }//next
       r = try producer.send(messages: data)
-      XCTAssertEqual(r, messages.count)
+      XCTAssertEqual(r.count, messages.count)
 
       producer.flush(1)
     }catch(let err) {
