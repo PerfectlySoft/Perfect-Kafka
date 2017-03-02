@@ -75,7 +75,7 @@ class PerfectKafkaTests: XCTestCase {
 
   func testProducer () {
     do {
-      let producer = try KafkaProducer("testing")
+      let producer = try Producer("testing")
       producer.OnError = { XCTFail("producer error: \($0)") }
       let brokers = producer.connect(brokers: hosts)
       XCTAssertGreaterThanOrEqual(brokers, 1)

@@ -16,15 +16,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-#if os(Linux)
-  import SwiftGlibc
-#else
-  import Darwin
-#endif
 
 import ckafka
 
-public class KafkaProducer: Kafka {
+public class Producer: Kafka {
 
   internal var topicHandle: OpaquePointer? = nil
 
@@ -50,7 +45,7 @@ public class KafkaProducer: Kafka {
     rd_kafka_conf_set_dr_cb(gConf.conf, { rk, _, _, _, _, ticket in
       guard let pk = rk else { return }
       guard let k = Kafka.instances[pk] else { return }
-      guard let producer = k as? KafkaProducer else { return }
+      guard let producer = k as? Producer else { return }
       producer.pop(ticket)
       print("                          found something to pop")
     })
@@ -63,28 +58,12 @@ public class KafkaProducer: Kafka {
     })
 
     try super.init(type: .PRODUCER, config: gConf)
-    if let tConf = topicConfig {
-      guard let h = rd_kafka_topic_new(_handle, topic, tConf.conf) else {
-        #if os(Linux)
-          throw Exception.UNKNOWN
-        #else
-          let reason = rd_kafka_errno2err(errno)
-          throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
-        #endif
-      }//end guard
-      topicHandle = h
-    }else {
-      guard let h = rd_kafka_topic_new(_handle, topic, nil) else {
-        #if os(Linux)
-          throw Exception.UNKNOWN
-        #else
-          let reason = rd_kafka_errno2err(errno)
-          throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
-        #endif
-      }//end guard
-      topicHandle = h
+    guard let h = rd_kafka_topic_new(_handle, topic, topicConfig == nil ? nil : topicConfig?.conf) else {
+      let reason = rd_kafka_errno2err(errno)
+      throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
     }//end guard
-    KafkaProducer.instances[_handle] = self
+    topicHandle = h
+    Producer.instances[_handle] = self
   }//end init
 
   public func flush(_ timeout: Int) {
@@ -121,11 +100,7 @@ public class KafkaProducer: Kafka {
       return
     }//end if
     ticket.deallocate(capacity: 1)
-    #if os(Linux)
-      throw Exception.UNKNOWN
-    #else
-      let reason = rd_kafka_errno2err(errno)
-      throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
-    #endif
+    let reason = rd_kafka_errno2err(errno)
+    throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
   }
 }

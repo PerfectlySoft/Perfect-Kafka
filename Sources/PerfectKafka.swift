@@ -17,10 +17,16 @@
 //===----------------------------------------------------------------------===//
 //
 #if os(Linux)
-import SwiftGlibc
+  import SwiftGlibc
+  import LinuxBridge
+
+var errno: Int32 {
+  return linux_errno()
+  }//end var
 #else
-import Darwin
+  import Darwin
 #endif
+
 
 import ckafka
 
