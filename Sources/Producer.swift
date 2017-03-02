@@ -47,7 +47,6 @@ public class Producer: Kafka {
       guard let k = Kafka.instances[pk] else { return }
       guard let producer = k as? Producer else { return }
       producer.pop(ticket)
-      print("                          found something to pop")
     })
 
     rd_kafka_conf_set_error_cb(gConf.conf, { conf, _, reason, _ in
@@ -85,15 +84,19 @@ public class Producer: Kafka {
   }//end
 
   public func send(message: String, key: String? = nil) throws {
+    guard let h = topicHandle else { throw Exception.UNKNOWN }
+
     var r:Int32 = 0
+
     sequenceId += 1
+
     let ticket = UnsafeMutablePointer<Int>.allocate(capacity: 1)
     ticket.pointee = sequenceId
 
     if let k = key {
-      r = rd_kafka_produce(topicHandle, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, strdup(message), message.utf8.count, k, k.utf8.count, ticket)
+      r = rd_kafka_produce(h, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, strdup(message), message.utf8.count, k, k.utf8.count, ticket)
     }else{
-      r = rd_kafka_produce(topicHandle, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, strdup(message), message.utf8.count, nil, 0, ticket)
+      r = rd_kafka_produce(h, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, strdup(message), message.utf8.count, nil, 0, ticket)
     }//end if
     if r == 0 {
       queue.insert(ticket)
@@ -102,5 +105,33 @@ public class Producer: Kafka {
     ticket.deallocate(capacity: 1)
     let reason = rd_kafka_errno2err(errno)
     throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
-  }
-}
+  }//end send
+
+  public func send(messages: [(String, String?)]) throws -> Int {
+    if messages.isEmpty { return 0 }
+    guard let h = topicHandle else { throw Exception.UNKNOWN }
+    let batch = UnsafeMutablePointer<rd_kafka_message_t>.allocate(capacity: messages.count)
+    for i in 0 ... messages.count - 1 {
+      let p = batch.advanced(by: i)
+      let m = messages[i]
+      p.pointee.partition = RD_KAFKA_PARTITION_UA
+      p.pointee.payload = unsafeBitCast(strdup(m.0), to: UnsafeMutableRawPointer.self)
+      p.pointee.len = m.0.utf8.count
+      sequenceId += 1
+      let ticket = UnsafeMutablePointer<Int>.allocate(capacity: 1)
+      ticket.pointee = sequenceId
+      queue.insert(ticket)
+      p.pointee._private = unsafeBitCast(ticket, to: UnsafeMutableRawPointer.self)
+      if let key = m.1 {
+        p.pointee.key = unsafeBitCast(strdup(key), to: UnsafeMutableRawPointer.self)
+        p.pointee.key_len = key.utf8.count
+      } else {
+        p.pointee.key = nil
+        p.pointee.key_len = 0
+      }//end key
+    }//next i
+    let r = rd_kafka_produce_batch(h, RD_KAFKA_PARTITION_UA, RD_KAFKA_MSG_F_FREE, batch, Int32(messages.count))
+    batch.deallocate(capacity: messages.count)
+    return Int(r)
+  }//
+}//end class

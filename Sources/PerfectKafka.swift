@@ -34,13 +34,9 @@ public class Kafka {
 
   public static let szString = 1024
 
-  public enum `Type` {
-    case PRODUCER, CONSUMER
-  }//end enum
+  public enum `Type` { case PRODUCER, CONSUMER }
 
-  public enum Failure: Error {
-    case INIT(String)
-  }//end Failure
+  public enum Failure: Error { case INIT(String) }
 
   internal var _handle: OpaquePointer
   internal var _config: Config
@@ -238,12 +234,13 @@ public class Kafka {
       }else {
         guard let cnf = rd_kafka_topic_conf_new() else {
           throw Exception.UNKNOWN
-        }
+        }//end guard
         conf = cnf
       }//end if
     }//end init
 
     deinit {
+      // don't destroy it, producer / consumer will release it themselves.
       //rd_kafka_topic_conf_destroy(conf)
     }//end deconstruction
 
@@ -273,10 +270,8 @@ public class Kafka {
     }//end properties
 
     public func `get` (_ variable: String) throws -> String {
-        guard let value = properties[variable] else {
-          throw Exception.UNKNOWN
-        }//end guard
-        return value
+      guard let value = properties[variable] else { throw Exception.UNKNOWN }
+      return value
     }//end get
 
     public func `set` (_ variable: String, value: String) throws {
@@ -299,13 +294,14 @@ public class Kafka {
       }else {
         guard let cnf = rd_kafka_conf_new() else {
           throw Exception.UNKNOWN
-        }
+        }//end guard
         conf = cnf
       }//end if
     }//end init
 
     deinit {
-      //rd_kafka_conf_destroy(conf)
+      // don't destroy it, producer / consumer will release it themselves.
+      // rd_kafka_conf_destroy(conf)
     }//end deconstruction
 
     public var properties: [String: String] {
@@ -386,15 +382,11 @@ public class Kafka {
 
   }//end init
 
-  deinit {
-    rd_kafka_destroy(_handle)
-  }//end destruction
+  deinit { rd_kafka_destroy(_handle) }
 
   public var name: String {
     get {
-      guard let n = rd_kafka_name(_handle) else {
-        return ""
-      }//end guard
+      guard let n = rd_kafka_name(_handle) else { return "" }
       return String(cString: n)
     }//end get
   }//end name

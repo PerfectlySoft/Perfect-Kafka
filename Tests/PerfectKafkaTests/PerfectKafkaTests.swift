@@ -81,6 +81,12 @@ class PerfectKafkaTests: XCTestCase {
       XCTAssertGreaterThanOrEqual(brokers, 1)
       let now = time(nil)
       try producer.send(message: "message test \(now)")
+      var messages = [(String, String?)]()
+      for i in 1 ... 10 {
+        messages.append(("batch #\(i) -> \(now)", nil))
+      }//next
+      let r = try producer.send(messages: messages)
+      XCTAssertEqual(r, messages.count)
       producer.flush(1)
     }catch(let err) {
       XCTFail("Producer \(err)")
