@@ -50,14 +50,14 @@ public class Producer: Kafka {
 
     rd_kafka_conf_set_dr_cb(gConf.conf, { rk, _, _, _, _, ticket in
       guard let pk = rk else { return }
-      guard let k = Kafka.instances[pk] else { return }
+      guard let k = Producer.instances[pk] else { return }
       guard let producer = k as? Producer else { return }
       producer.pop(ticket)
     })
 
     rd_kafka_conf_set_error_cb(gConf.conf, { conf, _, reason, _ in
       guard let pConf = conf else { return }
-      guard let cnf = Kafka.instances[pConf] else { return }
+      guard let cnf = Producer.instances[pConf] else { return }
       guard let r = reason else { return }
       cnf.OnError(String(cString: r))
     })

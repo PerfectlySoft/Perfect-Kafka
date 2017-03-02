@@ -27,6 +27,72 @@ public class Consumer: Kafka {
 
   public var topic: String { get { return topicName } }
 
+  public enum Position {
+    case BEGIN, END, STORED
+    case SPECIFY(Int64)
+  }//end Position
+
+  public class Message {
+    public var err: Exception = .NO_ERROR
+    public var topic = ""
+    public var partition: Int32 = 0
+    public var isText = false
+    public var data = [Int8]()
+    public var text = ""
+    public var keyIsText = false
+    public var keybuf = [Int8]()
+    public var key = ""
+    public var offset = Int64(-1)
+    init () { }
+    init(consumer: Consumer, pointer: UnsafeMutablePointer<rd_kafka_message_t>?) {
+      guard let h = consumer.topicHandle else {
+        err = Exception.UNKNOWN
+        return
+      }//end guard
+      guard let ptr = pointer else {
+        err = Exception.UNKNOWN
+        return
+      }//end guard
+      let msg = ptr.pointee
+      guard h == msg.rkt else {
+        err = Exception.UNKNOWN
+        return
+      }//end guard
+      err = Exception(rawValue: msg.err.rawValue) ?? Exception.UNKNOWN
+      topic = consumer.topic
+      partition = msg.partition
+      if let payloadPointer = msg.payload {
+        let pData = unsafeBitCast(payloadPointer, to: UnsafePointer<Int8>.self)
+        let pArrayData = UnsafeBufferPointer<Int8>(start: pData, count: msg.len)
+        data = Array(pArrayData)
+        if let string = String(validatingUTF8: pData) {
+          text = string
+          isText = true
+        } else {
+          isText = false
+        }//end if
+      }//end if
+
+      if let keyPointer = msg.key {
+        let pKey = unsafeBitCast(keyPointer, to: UnsafePointer<Int8>.self)
+        let pKeyData = UnsafeBufferPointer<Int8>(start: pKey, count: msg.key_len)
+        keybuf = Array(pKeyData)
+        if let string = String(validatingUTF8: pKey) {
+          key = string
+          keyIsText = true
+        } else {
+          keyIsText = false
+        }//end 
+      }
+      offset = msg.offset
+      // don't do this, kafka will handle it
+      //rd_kafka_message_destroy(pointer)
+    }//init
+  }//message
+
+  public typealias DeliveryCallback = (Message)-> Void
+  public var OnArrival: DeliveryCallback = { _ in }
+  
   init(_ topic: String, topicConfig: TopicConfig? = nil, globalConfig: Config? = nil) throws {
     topicName = topic
     try super.init(type: .CONSUMER, config: globalConfig)
@@ -35,7 +101,6 @@ public class Consumer: Kafka {
         throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
       }//end guard
     topicHandle = h
-    Producer.instances[_handle] = self
   }//end init
 
   deinit {
@@ -51,9 +116,17 @@ public class Consumer: Kafka {
     throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
   }//end store
 
-  public func start(_ from: Int64 = Int64(RD_KAFKA_OFFSET_BEGINNING), partition: Int32 = RD_KAFKA_PARTITION_UA) throws {
+  public func start(_ from: Position = .BEGIN, partition: Int32 = RD_KAFKA_PARTITION_UA) throws {
     guard let h = topicHandle else { throw Exception.UNKNOWN }
-    let r = rd_kafka_consume_start(h, partition, from)
+    var pos = Int64(0)
+    switch (from) {
+    case .BEGIN: pos = Int64(RD_KAFKA_OFFSET_BEGINNING)
+    case .END: pos = Int64(RD_KAFKA_OFFSET_END)
+    case .SPECIFY(let position): pos = position
+    default:
+      pos = Int64(RD_KAFKA_OFFSET_STORED)
+    }//end case
+    let r = rd_kafka_consume_start(h, partition, pos)
     if r == 0 { return }
     let reason = rd_kafka_errno2err(errno)
     throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
@@ -66,4 +139,21 @@ public class Consumer: Kafka {
     let reason = rd_kafka_errno2err(errno)
     throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
   }//end stop
+
+  public func poll(_ timeout: UInt = 10, partition: Int32 = RD_KAFKA_PARTITION_UA) throws -> Int {
+    guard let h = topicHandle else { throw Exception.UNKNOWN }
+    Consumer.instances[h] = self
+    let r = rd_kafka_consume_callback(h, partition, Int32(timeout), { pMsg, ticket in
+      guard let pk = ticket else { return }
+      let opk = unsafeBitCast(pk, to: OpaquePointer.self)
+      guard let k = Consumer.instances[opk] else { return }
+      guard let consumer = k as? Consumer else { return }
+      let msg = Message(consumer: consumer, pointer: pMsg)
+      consumer.OnArrival(msg)
+    }, unsafeBitCast(h, to: UnsafeMutableRawPointer.self))
+    if r < 0 {
+      throw Exception.UNKNOWN
+    }//end if
+    return Int(r)
+  }//end poll
 }//end class

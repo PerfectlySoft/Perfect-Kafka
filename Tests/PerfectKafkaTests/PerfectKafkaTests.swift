@@ -43,6 +43,8 @@ extension String {
 class PerfectKafkaTests: XCTestCase {
 
   let hosts = "nut.krb5.ca:9092"
+  let topic = "testing"
+
     func testConfig() {
         do {
           let k = try Kafka.Config()
@@ -89,13 +91,13 @@ class PerfectKafkaTests: XCTestCase {
 
   func testProducer () {
     do {
-      let producer = try Producer("testing")
+      let producer = try Producer(topic)
       producer.OnError = { XCTFail("producer error: \($0)") }
       producer.OnSent = { print("message \($0) has been sent") }
       let brokers = producer.connect(brokers: hosts)
-      XCTAssertGreaterThanOrEqual(brokers, 1)
+      XCTAssertGreaterThan(brokers, 0)
       var now = time(nil)
-      let _ = try producer.send(message: "\(OS) message test \(now)")
+      let _ = try producer.send(message: "\(OS) message test \(now)") 
       var messages = [(String, String?)]()
       for i in 1 ... 10 {
         messages.append(("\(OS) batch #\(i) -> \(now)", nil))
@@ -121,8 +123,20 @@ class PerfectKafkaTests: XCTestCase {
 
   func testConsumer () {
     do {
-      let k = try Kafka(type: .CONSUMER)
-      print(k.name)
+      let consumer = try Consumer(topic)
+      var stack = [Consumer.Message()]
+      consumer.OnArrival = { m in
+        print("message arrival #\(m.offset) \(m.text)")
+        stack.append(m)
+      }//end on received
+      let brokers = consumer.connect(brokers: hosts)
+      XCTAssertGreaterThan(brokers, 0)
+      try consumer.start(partition: 0)
+      var total = 0
+      while (total < 20) {
+        total += try consumer.poll(partition: 0)
+      }//end while
+      XCTAssertLessThanOrEqual(total, stack.count)
     }catch(let err) {
       XCTFail("Consumer \(err)")
     }
