@@ -116,6 +116,7 @@ class PerfectKafkaTests: XCTestCase {
       XCTAssertEqual(r.count, messages.count)
 
       producer.flush(1)
+      print(try producer.brokerInfo())
     }catch(let err) {
       XCTFail("Producer \(err)")
     }
@@ -137,6 +138,7 @@ class PerfectKafkaTests: XCTestCase {
         total += try consumer.poll(partition: 0)
       }//end while
       XCTAssertLessThanOrEqual(total, stack.count)
+      print(try consumer.brokerInfo())
     }catch(let err) {
       XCTFail("Consumer \(err)")
     }

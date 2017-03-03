@@ -35,6 +35,10 @@ public class Producer: Kafka {
 
   public var OnSent: DeliveryCallback = { _ in }
 
+  public func brokerInfo(topicExclusive: Bool = true, timeout: UInt = 1000) throws -> MetaData {
+    return try getBrokerInfo(topicHandle: topicExclusive ? topicHandle : nil, timeout: timeout)
+  }//end brokerInfo
+
   public func pop(_ msgId: UnsafeMutableRawPointer?) {
     guard let ticket = msgId else { return }
     let t = unsafeBitCast(ticket, to: UnsafeMutablePointer<Int64>.self)

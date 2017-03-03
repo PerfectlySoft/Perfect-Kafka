@@ -402,6 +402,87 @@ public class Kafka {
   public func connect(brokers: [String: Int]) -> Int {
     return connect(brokers: brokers.reduce("") { $0.isEmpty ? "\($1.key):\($1.value)" : "\($0),\($1.key):\($1.value)" })
   }//end func add
+
+  public struct Broker {
+    public var id = 0
+    public var host = ""
+    public var port = 0
+  }//end Broker
+
+  public struct Partition {
+    public var id = 0
+    public var err = Exception.NO_ERROR
+    public var leader = 0
+    public var replicas = [Int]()
+    public var isrs = [Int]()
+  }//end Partition
+
+  public struct Topic {
+    public var name = ""
+    public var err = Exception.NO_ERROR
+    public var partitions = [Partition]()
+  }//end Topic
+
+  public struct MetaData {
+    public var brokers = [Broker]()
+    public var topics = [Topic]()
+    public var origBrokerId = 0
+    public var origBrokerName = ""
+  }//end MetaData
+
+  @discardableResult
+  internal func getBrokerInfo(topicHandle: OpaquePointer?, timeout: UInt = 1000) throws -> MetaData {
+    var m = MetaData()
+    let ppMeta = UnsafeMutablePointer<UnsafePointer<rd_kafka_metadata>?>.allocate(capacity: 1)
+    var reason: rd_kafka_resp_err_t
+    if let handle = topicHandle {
+      reason = rd_kafka_metadata(_handle, 0, handle, ppMeta, Int32(timeout))
+    } else {
+      reason = rd_kafka_metadata(_handle, 1, nil, ppMeta, Int32(timeout))
+    }//end if
+    guard reason.rawValue == Exception.NO_ERROR.rawValue else {
+      ppMeta.deallocate(capacity: 1)
+      throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
+    }//end guard
+    guard let pMeta = ppMeta.pointee else {
+      throw Exception.UNKNOWN
+    }//end guard
+    let d = pMeta.pointee
+    m.origBrokerId = Int(d.orig_broker_id)
+    m.origBrokerName = String(cString: d.orig_broker_name)
+    for i in 0 ... d.broker_cnt - 1 {
+      let b = d.brokers.advanced(by: Int(i)).pointee
+      let broker = Broker(id: Int(b.id), host: String(cString:b.host), port: Int(b.port))
+      m.brokers.append(broker)
+    }//next i
+    for i in 0 ... d.topic_cnt - 1 {
+      let t = d.topics.advanced(by: Int(i)).pointee
+      var topic = Topic()
+      topic.name = String(cString: t.topic)
+      topic.err = Exception(rawValue: t.err.rawValue) ?? Exception.UNKNOWN
+      for j in 0 ... t.partition_cnt - 1 {
+        let p = t.partitions.advanced(by: Int(j)).pointee
+        var part = Partition()
+        part.id = Int(p.id)
+        part.err = Exception(rawValue: p.err.rawValue) ?? Exception.UNKNOWN
+        part.leader = Int(p.leader)
+        for k in 0 ... p.replica_cnt - 1 {
+          let replica = p.replicas.advanced(by: Int(k)).pointee
+          part.replicas.append(Int(replica))
+        }//next k
+
+        for k in 0 ... p.isr_cnt - 1 {
+          let isr = p.isrs.advanced(by: Int(k)).pointee
+          part.isrs.append(Int(isr))
+        }//next i
+        topic.partitions.append(part)
+      }//next j
+      m.topics.append(topic)
+    }//next i
+    rd_kafka_metadata_destroy(pMeta)
+    ppMeta.deallocate(capacity: 1)
+    return m
+  }//end fun
 }//end class
 
 

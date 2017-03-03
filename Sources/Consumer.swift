@@ -27,6 +27,10 @@ public class Consumer: Kafka {
 
   public var topic: String { get { return topicName } }
 
+  public func brokerInfo(topicExclusive: Bool = true, timeout: UInt = 1000) throws -> MetaData {
+    return try getBrokerInfo(topicHandle: topicExclusive ? topicHandle : nil, timeout: timeout)
+  }//end brokerInfo
+
   public enum Position {
     case BEGIN, END, STORED
     case SPECIFY(Int64)
