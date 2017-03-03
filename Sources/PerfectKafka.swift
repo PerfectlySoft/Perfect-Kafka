@@ -30,22 +30,35 @@ var errno: Int32 {
 
 import ckafka
 
+/// Base Class of Kafka Client. Don't use this class directly! Use Producer or Consumer instead.
 public class Kafka {
 
+  /// size required for C api string conversion
   public static let szString = 1024
 
+  /// Kafka 0.8 only support two types of clients
   public enum `Type` { case PRODUCER, CONSUMER }
 
+  /// only effective when initial failure with specific error information
   public enum Failure: Error { case INIT(String) }
 
+  /// inner handle for C api
   internal var _handle: OpaquePointer
+
+  /// inner record for global config
   internal var _config: Config
 
+  /// Instance hash table for management of better and safer C pointer applications and callbacks
   public static var instances:[OpaquePointer: Kafka] = [:]
+
+  /// Function type of Error Callback, with the only parameter of error message
   public typealias ErrorCallback = (String) -> Void
+
+  /// Error Callback Function. Users should customize this function for error control
   public var OnError:ErrorCallback = { _ in }
 
 
+  /// Kafka Errors, directly copy from librdkafka 0.10
   public enum Exception: Int32, Error {
     /* Internal errors to rdkafka: */
     ///  Begin internal error codes
@@ -222,19 +235,35 @@ public class Kafka {
     case END_ALL = 44
   }//end
 
+  /// Topic Configuration
   public class TopicConfig {
+
+    /// inner handle for C api
     internal var conf: OpaquePointer
 
+    /// constructor of Topic Configuration
+    /// - parameters:
+    ///   - configuration: TopicConfig? .  nil for new configuration; or duplicate it if not nil
     init (_ configuration: TopicConfig? = nil) throws {
+
+      // check if the original configuration is available
       if let config = configuration {
+
+        // if available, duplicate it.
         guard let cnf = rd_kafka_topic_conf_dup(config.conf) else {
           throw Exception.UNKNOWN
         }//end guard
+
+        // set handler
         conf = cnf
       }else {
+
+        // if not avaialble, create a new one.
         guard let cnf = rd_kafka_topic_conf_new() else {
           throw Exception.UNKNOWN
         }//end guard
+
+        // set handler
         conf = cnf
       }//end if
     }//end init
@@ -244,36 +273,64 @@ public class Kafka {
       //rd_kafka_topic_conf_destroy(conf)
     }//end deconstruction
 
+    /// list all keys and values in a configuration as a dictionary, read only.
     public var properties: [String: String] {
       get {
+
+        // prepare an empty dictionary for the configuration.
         var dic: [String:String] = [:]
         var cnt = 0
+
+        // load the configuration into a C pointer array
         guard let array = rd_kafka_topic_conf_dump(conf, &cnt) else {
           return dic
         }//end guard
+
+        // return if empty
         if cnt < 1 {
           return dic
         }//end if
+
+        // key and values are pair in the same C pointer array
         for i in 0 ... cnt / 2 {
           guard let k = array.advanced(by: i * 2).pointee,
             let v = array.advanced(by: i * 2 + 1).pointee
             else {
               break
           }//end guard
+
+          // save the key & value to the new dictionary
           let key = String(cString: k)
           let value = String(cString: v)
           dic[key] = value
         }//next
+
+        // release resources.
         rd_kafka_conf_dump_free(array, cnt)
+
+        // return the new created dictionary
         return dic
       }//end get
     }//end properties
 
+    /// get a variable value from the current configuration
+    /// - parameters:
+    ///   - variable: String for a valid variable name
+    /// - returns:
+    ///   value as String.
+    /// - throws:
+    ///   Exception
     public func `get` (_ variable: String) throws -> String {
       guard let value = properties[variable] else { throw Exception.UNKNOWN }
       return value
     }//end get
 
+    /// set a variable value to the current configuration
+    /// - parameters:
+    ///   - variable: String for a valid variable name
+    ///   - value: String value to set of this variable
+    /// - throws:
+    ///   Exception
     public func `set` (_ variable: String, value: String) throws {
       let reason = rd_kafka_topic_conf_set(conf, variable, value, nil, 0)
       guard reason.rawValue == Exception.NO_ERROR.rawValue else {
