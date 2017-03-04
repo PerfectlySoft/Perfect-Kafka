@@ -339,38 +339,64 @@ public class Kafka {
     }//end set
   }
 
+  /// Global Configuration Class
   public class Config {
+
+    /// internal handle for C api
     internal var conf: OpaquePointer
 
+    /// constructor of configuration class
+    /// - parameters: 
+    ///   - configuration: Config? nil for creating new instance, otherwise will duplicate
+    /// - throws:
+    ///   Exception
     init (_ configuration: Config? = nil) throws {
+
+      // check if not nil
       if let config = configuration {
+
+        // duplicate the current instance
         guard let cnf = rd_kafka_conf_dup(config.conf) else {
           throw Exception.UNKNOWN
         }//end guard
+
+        // set the handler
         conf = cnf
       }else {
+
+        // otherwise create a new instance
         guard let cnf = rd_kafka_conf_new() else {
           throw Exception.UNKNOWN
         }//end guard
+
+        // set the handler
         conf = cnf
       }//end if
     }//end init
 
+    /// deconstructor
     deinit {
       // don't destroy it, producer / consumer will release it themselves.
       // rd_kafka_conf_destroy(conf)
     }//end deconstruction
 
+    /// list all keys and values in a configuration as a dictionary, read only.
     public var properties: [String: String] {
       get {
+
+        // prepare an empty dictionary
         var dic: [String:String] = [:]
         var cnt = 0
+
+        // retrieve all variables
         guard let array = rd_kafka_conf_dump(conf, &cnt) else {
           return dic
         }//end guard
         if cnt < 1 {
           return dic
         }//end if
+
+        // save all keys and values into the dictionary
         for i in 0 ... cnt / 2 {
           guard let k = array.advanced(by: i * 2).pointee,
             let v = array.advanced(by: i * 2 + 1).pointee
@@ -386,6 +412,13 @@ public class Kafka {
       }//end get
     }//end properties
 
+    /// get a variable value from the current configuration
+    /// - parameters:
+    ///   - variable: String for a valid variable name
+    /// - returns:
+    ///   value as String.
+    /// - throws:
+    ///   Exception
     public func `get` (_ variable: String) throws -> String {
       /* 
         The following code is reserved for librdkafka 0.9 and above
@@ -412,6 +445,12 @@ public class Kafka {
     #endif
     }//end get
 
+    /// set a variable value to the current configuration
+    /// - parameters:
+    ///   - variable: String for a valid variable name
+    ///   - value: String value to set of this variable
+    /// - throws:
+    ///   Exception
     public func `set` (_ variable: String, value: String) throws {
       let reason = rd_kafka_conf_set(conf, variable, value, nil, 0)
       guard reason.rawValue == Exception.NO_ERROR.rawValue else {
@@ -420,14 +459,23 @@ public class Kafka {
     }//end set
   }//end Config
 
-
+  /// constructor of Kafka client base class
+  /// - parameters:
+  ///   - type: Type of Kafka client, must be either producer or consumer
+  ///   - config: Config? global configuration, nil for new instance creation (default)
   init(type: `Type`, config: Config? = nil) throws {
+
+    // determine the client type
     let kType = type == .PRODUCER ? RD_KAFKA_PRODUCER : RD_KAFKA_CONSUMER
+
+    // check if need to create new configuration by default
     if config == nil {
       _config = try Config()
     }else {
       _config = config!
     }//end if
+
+    // create new client instance
     let errstr = UnsafeMutablePointer<CChar>.allocate(capacity: Kafka.szString)
     guard let h = rd_kafka_new(kType, _config.conf, errstr, Kafka.szString) else {
       let e = String(cString: errstr)
@@ -439,8 +487,10 @@ public class Kafka {
 
   }//end init
 
+  /// destructor of Kafka base client
   deinit { rd_kafka_destroy(_handle) }
 
+  /// name of the client
   public var name: String {
     get {
       guard let n = rd_kafka_name(_handle) else { return "" }
@@ -448,96 +498,195 @@ public class Kafka {
     }//end get
   }//end name
 
+  /// connect to brokers
+  /// - parameter: 
+  ///   - brokers: String, in form of "host:port,...", e.g., "host1:9092,host2:9092,host3:9092"
+  /// - returns:
+  ///   quantity of brokers that connected.
   public func connect(brokers: String) -> Int {
     return Int(rd_kafka_brokers_add(_handle, brokers))
   }//end add
 
+  /// connect to brokers
+  /// - parameter:
+  ///   - brokers: [String], in form of ["host:port"], e.g., ["host1:9092","host2:9092","host3:9092"]
+  /// - returns:
+  ///   quantity of brokers that connected.
   public func connect(brokers: [String]) -> Int {
     return connect(brokers: brokers.joined(separator: ","))
   }//end func add
 
+  /// connect to brokers
+  /// - parameter:
+  ///   - brokers: [String: Int], in form of ["host":port], e.g., ["host1":9092,"host2":9092,"host3":9092]
+  /// - returns:
+  ///   quantity of brokers that connected.
   public func connect(brokers: [String: Int]) -> Int {
     return connect(brokers: brokers.reduce("") { $0.isEmpty ? "\($1.key):\($1.value)" : "\($0),\($1.key):\($1.value)" })
   }//end func add
 
+  /// Broker structure, a part of MetaData
   public struct Broker {
+    /// Broker Id
     public var id = 0
+    /// Host name of the broker
     public var host = ""
+    /// Host port that listens
     public var port = 0
   }//end Broker
 
+  /// Partition structure, a part of MetaData
   public struct Partition {
+    /// Partition Id
     public var id = 0
+    /// Partition error reported by broker
     public var err = Exception.NO_ERROR
+    /// Leader broker
     public var leader = 0
+    /// Replica brokers
     public var replicas = [Int]()
+    /// In-Sync-Replica brokers
     public var isrs = [Int]()
   }//end Partition
 
+  /// Topic structure, a part of MetaData
   public struct Topic {
+    /// Topic name
     public var name = ""
+    /// Topic error reported by broker
     public var err = Exception.NO_ERROR
+    /// Partitions of this topic
     public var partitions = [Partition]()
   }//end Topic
 
+  /// Meta data for broker report
   public struct MetaData {
+    /// Brokers that connected
     public var brokers = [Broker]()
+    /// Available topics
     public var topics = [Topic]()
+    /// Broker originating this metadata
     public var origBrokerId = 0
+    /// Name of originating broker
     public var origBrokerName = ""
   }//end MetaData
 
+  /// internal function for getting meta data from a broker
+  /// - parameters:
+  ///   - topicHandle: OpaquePointer?, nil for all topics, otherwise for specific topic.
+  ///   - timeout: UInt, timeout for retrieving information, in milli seconds. Default is 1 second.
+  /// - returns
+  ///   MetaData
+  /// - throws
+  ///   Exception
   @discardableResult
   internal func getBrokerInfo(topicHandle: OpaquePointer?, timeout: UInt = 1000) throws -> MetaData {
+
+    // prepare an empty meta data container
     var m = MetaData()
+
+    // prepare the pointer to hold the data returned
     let ppMeta = UnsafeMutablePointer<UnsafePointer<rd_kafka_metadata>?>.allocate(capacity: 1)
+
+    // C api return value
     var reason: rd_kafka_resp_err_t
+
+    // if handle is valid, then try to gather information only for this specific handle
     if let handle = topicHandle {
+
+      // get meta data by assigning the specific topic handle
       reason = rd_kafka_metadata(_handle, 0, handle, ppMeta, Int32(timeout))
     } else {
+
+      // otherwise should collect all possible topics from the same broker
       reason = rd_kafka_metadata(_handle, 1, nil, ppMeta, Int32(timeout))
     }//end if
+
+    // check return value for errors
     guard reason.rawValue == Exception.NO_ERROR.rawValue else {
       ppMeta.deallocate(capacity: 1)
       throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
     }//end guard
+
+    // get the newly allocated meta data pointer
     guard let pMeta = ppMeta.pointee else {
       throw Exception.UNKNOWN
     }//end guard
+
+    // get the meta data structure
     let d = pMeta.pointee
+
+    // translate C structure to Swift structure
+
+    // set originated broker id
     m.origBrokerId = Int(d.orig_broker_id)
+
+    // set originated broker name
     m.origBrokerName = String(cString: d.orig_broker_name)
+
+    // save broker info into an array
     for i in 0 ... d.broker_cnt - 1 {
+
+      // jump to the right pointer
       let b = d.brokers.advanced(by: Int(i)).pointee
       let broker = Broker(id: Int(b.id), host: String(cString:b.host), port: Int(b.port))
       m.brokers.append(broker)
     }//next i
+
+    // walk through all topics
     for i in 0 ... d.topic_cnt - 1 {
+
+      // jump to the right pointer
       let t = d.topics.advanced(by: Int(i)).pointee
+
+      // create an empty topic to store data
       var topic = Topic()
+
+      // set topic basic info
       topic.name = String(cString: t.topic)
       topic.err = Exception(rawValue: t.err.rawValue) ?? Exception.UNKNOWN
+
+      // get all partitions for the specific topic
       for j in 0 ... t.partition_cnt - 1 {
         let p = t.partitions.advanced(by: Int(j)).pointee
+
+        // create an empty partition to store data
         var part = Partition()
+
+        // get partition id
         part.id = Int(p.id)
+
+        // get partition errors
         part.err = Exception(rawValue: p.err.rawValue) ?? Exception.UNKNOWN
+
+        // get partition leader
         part.leader = Int(p.leader)
+
+        // get partition replicas
         for k in 0 ... p.replica_cnt - 1 {
           let replica = p.replicas.advanced(by: Int(k)).pointee
           part.replicas.append(Int(replica))
         }//next k
 
+        // get ISR brokers in this partition
         for k in 0 ... p.isr_cnt - 1 {
           let isr = p.isrs.advanced(by: Int(k)).pointee
           part.isrs.append(Int(isr))
         }//next i
+
+        // save partition info into topic data structure
         topic.partitions.append(part)
       }//next j
+
+      // add the newly allocated topic to meta data return struture
       m.topics.append(topic)
     }//next i
+
+    // release intermediate resources
     rd_kafka_metadata_destroy(pMeta)
     ppMeta.deallocate(capacity: 1)
+
+    // return the meta data expected
     return m
   }//end fun
 }//end class
