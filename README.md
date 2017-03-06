@@ -171,7 +171,7 @@ let producer = try Producer("VideoTest")
 
 #### Connect to Brokers
 
-Use method `connect()` to connect to one or more message brokers, i.e., Kafka hosts:
+Use method `connect()` to connect to one or more message brokers, i.e., Kafka hosts ( host and port ):
 
 ``` swift
 let brokers = producer.connect(brokers: "host1:9092,host2:9092,host3:9092")
