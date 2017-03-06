@@ -154,7 +154,7 @@ Perfect-Kafka 提供一个消息生产者 Producer 类用于向服务器发送�
 let producer = try Producer("VideoTest")
 let brokers = producer.connect(brokers: "host:9092")
 if brokers > 0 {
-  let _ = try producer.send(message: "hello, world!")
+  let _ = try producer.send(message: "你好，世界！")
 }
 ```
 

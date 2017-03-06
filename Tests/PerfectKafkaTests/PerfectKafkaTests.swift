@@ -97,10 +97,10 @@ class PerfectKafkaTests: XCTestCase {
       let brokers = producer.connect(brokers: hosts)
       XCTAssertGreaterThan(brokers, 0)
       var now = time(nil)
-      let _ = try producer.send(message: "\(OS) message test \(now)") 
+      let _ = try producer.send(message: "\(OS) message test \(now)")
       var messages = [(String, String?)]()
       for i in 1 ... 10 {
-        messages.append(("\(OS) batch #\(i) -> \(now)", nil))
+        messages.append(("\(OS) 字符串批量 #\(i) -> \(now)", nil))
       }//next
       var r = try producer.send(messages: messages)
       XCTAssertEqual(r.count, messages.count)
@@ -110,7 +110,7 @@ class PerfectKafkaTests: XCTestCase {
       let _ = try producer.send(message: "\(OS) binary data test \(now)".buffer)
       var data = [([Int8], [Int8])]()
       for i in 1 ... 10 {
-        data.append(("\(OS) bianry data batch #\(i) -> \(now)".buffer, [Int8]()))
+        data.append(("\(OS) 二进制批量流 #\(i) -> \(now)".buffer, [Int8]()))
       }//next
       r = try producer.send(messages: data)
       XCTAssertEqual(r.count, messages.count)
