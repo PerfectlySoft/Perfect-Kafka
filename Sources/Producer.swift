@@ -84,7 +84,7 @@ public class Producer: Kafka {
   ///   - globalConfig: Config? configuration for global kafka setting, nil to use the default setting.
   /// - throws:
   ///   Exception
-  init(_ topic: String, topicConfig: TopicConfig? = nil, globalConfig: Config? = nil) throws {
+  public init(_ topic: String, topicConfig: TopicConfig? = nil, globalConfig: Config? = nil) throws {
 
     // set the topic
     topicName = topic

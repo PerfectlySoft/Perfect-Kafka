@@ -89,13 +89,13 @@ public class Consumer: Kafka {
     public var offset = Int64(-1)
 
     /// default constructor - just create an empty message
-    init () { }
+    public init () { }
 
     /// constructor that initialize from a librdkafka message pointer
     /// - parameters:
     ///   - consumer: Consumer, the consumer client that hold the topic info
     ///   - pointer: librdkafka message pointer
-    init(consumer: Consumer, pointer: UnsafeMutablePointer<rd_kafka_message_t>?) {
+    public init(consumer: Consumer, pointer: UnsafeMutablePointer<rd_kafka_message_t>?) {
 
       // get the topic handle
       guard let h = consumer.topicHandle else {
@@ -148,7 +148,7 @@ public class Consumer: Kafka {
           keyIsText = true
         } else {
           keyIsText = false
-        }//end 
+        }//end
       }//end if
 
       // set the message offset in topic
@@ -170,7 +170,7 @@ public class Consumer: Kafka {
   ///   - globalConfig: Config? configuration for global kafka setting, nil to use the default setting.
   /// - throws:
   ///   Exception
-  init(_ topic: String, topicConfig: TopicConfig? = nil, globalConfig: Config? = nil) throws {
+  public init(_ topic: String, topicConfig: TopicConfig? = nil, globalConfig: Config? = nil) throws {
 
     // set the topic name
     topicName = topic

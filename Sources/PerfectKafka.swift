@@ -223,13 +223,13 @@ public class Kafka {
     case INVALID_REPLICATION_FACTOR = 38
     ///  Invalid replica assignment
     case INVALID_REPLICA_ASSIGNMENT = 39
-    ///  Invalid config 
+    ///  Invalid config
     case INVALID_CONFIG = 40
-    ///  Not controller for cluster 
+    ///  Not controller for cluster
     case NOT_CONTROLLER = 41
-    ///  Invalid request 
+    ///  Invalid request
     case INVALID_REQUEST = 42
-    ///  Message format on broker does not support request 
+    ///  Message format on broker does not support request
     case UNSUPPORTED_FOR_MESSAGE_FORMAT = 43
     /// All other errors
     case END_ALL = 44
@@ -244,7 +244,7 @@ public class Kafka {
     /// constructor of Topic Configuration
     /// - parameters:
     ///   - configuration: TopicConfig? .  nil for new configuration; or duplicate it if not nil
-    init (_ configuration: TopicConfig? = nil) throws {
+    public init (_ configuration: TopicConfig? = nil) throws {
 
       // check if the original configuration is available
       if let config = configuration {
@@ -346,11 +346,11 @@ public class Kafka {
     internal var conf: OpaquePointer
 
     /// constructor of configuration class
-    /// - parameters: 
+    /// - parameters:
     ///   - configuration: Config? nil for creating new instance, otherwise will duplicate
     /// - throws:
     ///   Exception
-    init (_ configuration: Config? = nil) throws {
+    public init (_ configuration: Config? = nil) throws {
 
       // check if not nil
       if let config = configuration {
@@ -420,7 +420,7 @@ public class Kafka {
     /// - throws:
     ///   Exception
     public func `get` (_ variable: String) throws -> String {
-      /* 
+      /*
         The following code is reserved for librdkafka 0.9 and above
         until Feb 28, 2017, Ubuntu 16.04 distribution is only 0.8
         watch for updates; if librdkafka-dev was upgraded, then please remove
@@ -463,7 +463,7 @@ public class Kafka {
   /// - parameters:
   ///   - type: Type of Kafka client, must be either producer or consumer
   ///   - config: Config? global configuration, nil for new instance creation (default)
-  init(type: `Type`, config: Config? = nil) throws {
+  public init(type: `Type`, config: Config? = nil) throws {
 
     // determine the client type
     let kType = type == .PRODUCER ? RD_KAFKA_PRODUCER : RD_KAFKA_CONSUMER
@@ -499,7 +499,7 @@ public class Kafka {
   }//end name
 
   /// connect to brokers
-  /// - parameter: 
+  /// - parameter:
   ///   - brokers: String, in form of "host:port,...", e.g., "host1:9092,host2:9092,host3:9092"
   /// - returns:
   ///   quantity of brokers that connected.
@@ -690,5 +690,3 @@ public class Kafka {
     return m
   }//end fun
 }//end class
-
-
