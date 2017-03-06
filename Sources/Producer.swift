@@ -149,10 +149,10 @@ public class Producer: Kafka {
     let limitation = time_t(timeout)
 
     // wait until all messages sent or time out
-    while(!queue.isEmpty && limitation > (now - then)) {
+    repeat {
       rd_kafka_poll(_handle, 100)
       now = time(nil)
-    }//end while
+    }while(!queue.isEmpty && limitation > (now - then)) //end while
   }//end flush
 
   /// destructor

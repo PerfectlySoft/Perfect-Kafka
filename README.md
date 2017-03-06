@@ -211,6 +211,8 @@ Perfect Kafka `send()` is asynchronous function so the library provides a few ex
 
 - `OnError()` callback. Producer will call this event if something wrong, e.g., `producer.OnError = { print("error: \($0)") }` will print out the error message if happen.
 
+- `flush(_ seconds: Int)` method can help wait seconds for clearing the message queue and flushing the outbox.
+
 ### Consumer
 
 Before actually receiving messages from Kafka with a specific topic, a few procedures are required to initialize a Consumer instance:
