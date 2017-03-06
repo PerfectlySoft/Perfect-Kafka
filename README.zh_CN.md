@@ -283,7 +283,7 @@ let info = try consumer.brokerInfo()
 guard info.topics.count > 0 else {
   // 主题内容不存在
 }//end guard
-guard info.topics[0].name != "VideoTest" else {
+guard info.topics[0].name == "VideoTest" else {
   // 主题内容并非预期
 }//end guar
 let partitions = info.topics[0].partitions

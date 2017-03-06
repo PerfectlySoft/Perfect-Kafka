@@ -239,7 +239,7 @@ public class Consumer: Kafka {
   ///   Exception
   public func stop (_ partition: Int32 = RD_KAFKA_PARTITION_UA) throws {
     guard let h = topicHandle else { return }
-    let r = rd_kafka_consume_stop(h, RD_KAFKA_PARTITION_UA)
+    let r = rd_kafka_consume_stop(h, partition)
     if r == 0 { return }
     let reason = rd_kafka_errno2err(errno)
     throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN

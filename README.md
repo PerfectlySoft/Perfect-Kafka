@@ -280,7 +280,7 @@ let info = try consumer.brokerInfo()
 guard info.topics.count > 0 else {
   // no topic found
 }//end guard
-guard info.topics[0].name != "VideoTest" else {
+guard info.topics[0].name == "VideoTest" else {
   // it is not the topic we want
 }//end guar
 let partitions = info.topics[0].partitions
