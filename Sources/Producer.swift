@@ -140,19 +140,9 @@ public class Producer: Kafka {
 
   /// wait a while for message sending, for synchronizing purposes only
   /// - parameters:
-  ///   - timeout: Int, seconds to wait
-  public func flush(_ timeout: Int) {
-
-    // calculate the time spent on synchronization.
-    let then = time(nil)
-    var now = time(nil)
-    let limitation = time_t(timeout)
-
-    // wait until all messages sent or time out
-    repeat {
-      rd_kafka_poll(_handle, 100)
-      now = time(nil)
-    }while(!queue.isEmpty && limitation > (now - then)) //end while
+  ///   - timeout: UInt, milliseconds to wait
+  public func flush(_ timeout: UInt) {
+    rd_kafka_poll(_handle, Int32(timeout))
   }//end flush
 
   /// destructor
