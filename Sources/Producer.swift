@@ -64,7 +64,7 @@ public class Producer: Kafka {
 
     // convert the input parameter into an Int64 pointer
     guard let ticket = msgId else { return }
-    let t = unsafeBitCast(ticket, to: UnsafeMutablePointer<Int64>.self)
+    let t = ticket.assumingMemoryBound(to: Int64.self)
 
     // remove it from the sending queue
     queue.remove(t)
@@ -304,7 +304,7 @@ public class Producer: Kafka {
       tickets.append(ticket.pointee)
 
       // pass the instance to callback
-      p.pointee._private = unsafeBitCast(ticket, to: UnsafeMutableRawPointer.self)
+      p.pointee._private = UnsafeMutableRawPointer(ticket)
 
       // add the optional key
       if let key = m.1 {
@@ -376,7 +376,7 @@ public class Producer: Kafka {
       tickets.append(ticket.pointee)
 
       // pass the instance to callback
-      p.pointee._private = unsafeBitCast(ticket, to: UnsafeMutableRawPointer.self)
+      p.pointee._private = UnsafeMutableRawPointer(ticket)
 
       // add the optional key
       if m.1.count > 0 {

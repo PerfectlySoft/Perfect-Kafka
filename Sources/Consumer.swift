@@ -123,7 +123,7 @@ public class Consumer: Kafka {
 
       // save message pointer into [Int8]
       if let payloadPointer = msg.payload {
-        let pData = unsafeBitCast(payloadPointer, to: UnsafePointer<Int8>.self)
+        let pData = payloadPointer.assumingMemoryBound(to: Int8.self)
         let pArrayData = UnsafeBufferPointer<Int8>(start: pData, count: msg.len)
         data = Array(pArrayData)
 
@@ -138,7 +138,7 @@ public class Consumer: Kafka {
 
       // save the key pointer into [Int8]
       if let keyPointer = msg.key {
-        let pKey = unsafeBitCast(keyPointer, to: UnsafePointer<Int8>.self)
+        let pKey = keyPointer.assumingMemoryBound(to: Int8.self)
         let pKeyData = UnsafeBufferPointer<Int8>(start: pKey, count: msg.key_len)
         keybuf = Array(pKeyData)
 
