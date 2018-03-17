@@ -121,7 +121,11 @@ public class Producer: Kafka {
         
         // create a new topic; or connect to the existing topic
         guard let h = rd_kafka_topic_new(_handle, topic, topicConfig == nil ? nil : topicConfig?.conf) else {
-            let reason = rd_kafka_last_error()
+            #if os(Linux)
+                let reason = rd_kafka_errno2err(errno)
+            #else
+                let reason = rd_kafka_last_error()
+            #endif
             throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
         }//end guard
         
@@ -197,7 +201,12 @@ public class Producer: Kafka {
         
         // otherwise release resources if failed
         ticket.deallocate(capacity: 1)
-        let reason = rd_kafka_last_error()
+        #if os(Linux)
+            let reason = rd_kafka_errno2err(errno)
+        #else
+            let reason = rd_kafka_last_error()
+        #endif
+            
         throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
     }//end send
     
@@ -256,7 +265,11 @@ public class Producer: Kafka {
         
         // otherwise release resources if failed
         ticket.deallocate(capacity: 1)
-        let reason = rd_kafka_last_error()
+        #if os(Linux)
+            let reason = rd_kafka_errno2err(errno)
+        #else
+            let reason = rd_kafka_last_error()
+        #endif
         throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
     }//end send
     

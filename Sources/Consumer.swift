@@ -180,7 +180,11 @@ public class Consumer: Kafka {
         
         // create a topic or connect to the existing one
         guard let h = rd_kafka_topic_new(_handle, topic, topicConfig == nil ? nil : topicConfig?.conf) else {
-            let reason = rd_kafka_last_error()
+            #if os(Linux)
+                let reason = rd_kafka_errno2err(errno)
+            #else
+                let reason = rd_kafka_last_error()
+            #endif
             throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
         }//end guard
         topicHandle = h
@@ -228,7 +232,11 @@ public class Consumer: Kafka {
         }//end case
         let r = rd_kafka_consume_start(h, partition, pos)
         if r == 0 { return }
-        let reason = rd_kafka_last_error()
+        #if os(Linux)
+            let reason = rd_kafka_errno2err(errno)
+        #else
+            let reason = rd_kafka_last_error()
+        #endif
         throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
     }//end start
     
@@ -241,7 +249,11 @@ public class Consumer: Kafka {
         guard let h = topicHandle else { return }
         let r = rd_kafka_consume_stop(h, partition)
         if r == 0 { return }
-        let reason = rd_kafka_last_error()
+        #if os(Linux)
+            let reason = rd_kafka_errno2err(errno)
+        #else
+            let reason = rd_kafka_last_error()
+        #endif
         throw Exception(rawValue: reason.rawValue) ?? Exception.UNKNOWN
     }//end stop
     
